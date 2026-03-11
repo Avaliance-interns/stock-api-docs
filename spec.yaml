@@ -1,0 +1,705 @@
+openapi: 3.0.3
+info:
+  title: Application de Gestion de Stock pour Cabinet Médical API
+  version: 1.0.0
+  description: |
+    Spécification OpenAPI mockable (Prism). Conçue pour le développement frontend
+    avant l'existence du backend Laravel. Respecte le cahier des spécifications du projet.
+
+servers:
+  - url: http://localhost:4010/api
+    description: Prism Mock Server (dev)
+
+tags:
+  - name: auth
+    description: Authentification (login / logout)
+  - name: categories
+    description: CRUD des catégories
+  - name: products
+    description: CRUD des produits
+  - name: stock
+    description: Entrées / sorties / historique
+  - name: dashboard
+    description: Indicateurs synthétiques pour le frontend
+
+paths:
+
+  /login:
+    post:
+      tags: [auth]
+      summary: Login 
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+            examples:
+              sample:
+                value:
+                  email: "admin@example.com"
+                  password: "secret"
+      responses:
+        "200":
+          description: Authenticated (returns token + user)
+          content:
+            application/json:
+              examples:
+                success:
+                  value:
+                    token: "mocked.jwt.token"
+                    user:
+                      id: 1
+                      name: "Admin"
+                      email: "admin@example.com"
+                      role: "admin"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /logout:
+    post:
+      tags: [auth]
+      summary: Logout
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              examples:
+                ok:
+                  value:
+                    message: "Logged out"
+
+  /categories:
+    get:
+      tags: [categories]
+      summary: Lister les catégories
+      responses:
+        "200":
+          description: Liste des catégories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+              examples:
+                sample:
+                  value:
+                    - id: 1
+                      name: "Médicaments"
+                      description: "Antalgiques, antibiotiques"
+                    - id: 2
+                      name: "Consommables"
+                      description: "Gants, compresses"
+    post:
+      tags: [categories]
+      summary: Créer une catégorie
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryCreate"
+            examples:
+              create:
+                value:
+                  name: "Matériel"
+                  description: "Instruments médicaux"
+      responses:
+        "201":
+          description: Catégorie créée
+          content:
+            application/json:
+              examples:
+                created:
+                  value:
+                    id: 3
+                    name: "Matériel"
+                    description: "Instruments médicaux"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /categories/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags: [categories]
+      summary: Récupérer une catégorie
+      responses:
+        "200":
+          description: Catégorie
+          content:
+            application/json:
+              examples:
+                example:
+                  value:
+                    id: 1
+                    name: "Médicaments"
+                    description: "Antalgiques, antibiotiques"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [categories]
+      summary: Mettre à jour une catégorie
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryCreate"
+            examples:
+              update:
+                value:
+                  name: "Médicaments"
+                  description: "Médicaments généraux"
+      responses:
+        "200":
+          description: Catégorie mise à jour
+          content:
+            application/json:
+              examples:
+                updated:
+                  value:
+                    id: 1
+                    name: "Médicaments"
+                    description: "Médicaments généraux"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [categories]
+      summary: Supprimer une catégorie
+      responses:
+        "204":
+          description: Catégorie supprimée
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /products:
+    get:
+      tags: [products]
+      summary: Lister les produits (filtrable)
+      parameters:
+        - name: category_id
+          in: query
+          schema:
+            type: integer
+          description: Filtrer par catégorie
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: Recherche par nom ou description
+      responses:
+        "200":
+          description: Liste produits
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+              examples:
+                sampleList:
+                  value:
+                    - id: 10
+                      name: "Paracétamol 500mg"
+                      category_id: 1
+                      description: "Boîte de 16 comprimés"
+                      quantity: 12
+                      minimum_stock: 5
+                      created_at: "2026-03-01T10:00:00Z"
+                    - id: 11
+                      name: "Gants stériles"
+                      category_id: 2
+                      description: "Taille M - boîte de 50"
+                      quantity: 3
+                      minimum_stock: 10
+                      created_at: "2026-03-02T09:15:00Z"
+    post:
+      tags: [products]
+      summary: Créer un produit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductCreate"
+            examples:
+              createProduct:
+                value:
+                  name: "Ibuprofène 200mg"
+                  category_id: 1
+                  description: "Boîte de 20 comprimés"
+                  quantity: 50
+                  minimum_stock: 10
+      responses:
+        "201":
+          description: Produit créé
+          content:
+            application/json:
+              examples:
+                created:
+                  value:
+                    id: 12
+                    name: "Ibuprofène 200mg"
+                    category_id: 1
+                    description: "Boîte de 20 comprimés"
+                    quantity: 50
+                    minimum_stock: 10
+                    created_at: "2026-03-10T08:30:00Z"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /products/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags: [products]
+      summary: Détails d'un produit
+      responses:
+        "200":
+          description: Produit
+          content:
+            application/json:
+              examples:
+                productDetail:
+                  value:
+                    id: 10
+                    name: "Paracétamol 500mg"
+                    category_id: 1
+                    description: "Boîte de 16 comprimés"
+                    quantity: 12
+                    minimum_stock: 5
+                    created_at: "2026-03-01T10:00:00Z"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [products]
+      summary: Mettre à jour un produit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductCreate"
+            examples:
+              update:
+                value:
+                  name: "Paracétamol 500mg - modifié"
+                  category_id: 1
+                  description: "Nouvelle notice"
+                  quantity: 20
+                  minimum_stock: 5
+      responses:
+        "200":
+          description: Produit mis à jour
+          content:
+            application/json:
+              examples:
+                updated:
+                  value:
+                    id: 10
+                    name: "Paracétamol 500mg - modifié"
+                    category_id: 1
+                    description: "Nouvelle notice"
+                    quantity: 20
+                    minimum_stock: 5
+                    created_at: "2026-03-01T10:00:00Z"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [products]
+      summary: Supprimer un produit
+      responses:
+        "204":
+          description: Produit supprimé
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /stock/entry:
+    post:
+      tags: [stock]
+      summary: Créer une entrée de stock (stock += quantity)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StockEntryCreate"
+            examples:
+              sampleEntryCreate:
+                value:
+                  product_id: 10
+                  quantity: 50
+                  note: "Livraison pharmacie"
+      responses:
+        "201":
+          description: Entrée enregistrée
+          content:
+            application/json:
+              examples:
+                createdEntry:
+                  value:
+                    id: 100
+                    product_id: 10
+                    type: entry
+                    quantity: 50
+                    note: "Livraison pharmacie"
+                    created_at: "2026-03-05T09:00:00Z"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /stock/exit:
+    post:
+      tags: [stock]
+      summary: Enregistrer une sortie de stock (stock -= quantity)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StockExitCreate"
+            examples:
+              sampleExitCreate:
+                value:
+                  product_id: 11
+                  quantity: 5
+                  note: "Consultation patient"
+      responses:
+        "201":
+          description: Sortie enregistrée
+          content:
+            application/json:
+              examples:
+                createdExit:
+                  value:
+                    id: 200
+                    product_id: 11
+                    type: exit
+                    quantity: 5
+                    note: "Consultation patient"
+                    created_at: "2026-03-06T14:30:00Z"
+        "400":
+          description: Quantité insuffisante
+          content:
+            application/json:
+              examples:
+                insufficient:
+                  value:
+                    code: 400
+                    message: "Quantité insuffisante"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /stock/history:
+    get:
+      tags: [stock]
+      summary: Historique des mouvements de stock (entrées + sorties)
+      parameters:
+        - name: product_id
+          in: query
+          schema:
+            type: integer
+          description: Filtrer par produit
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 25
+          description: Nombre max d'items
+      responses:
+        "200":
+          description: Liste des mouvements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StockMovement"
+              examples:
+                sample:
+                  value:
+                    - id: 100
+                      product_id: 10
+                      type: entry
+                      quantity: 50
+                      note: "Livraison pharmacie"
+                      created_at: "2026-03-05T09:00:00Z"
+                    - id: 200
+                      product_id: 11
+                      type: exit
+                      quantity: 5
+                      note: "Consultation patient"
+                      created_at: "2026-03-06T14:30:00Z"
+
+  /dashboard:
+    get:
+      tags: [dashboard]
+      summary: Indicateurs pour le tableau de bord (total produits, produits en rupture, dernières entrées/sorties)
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              examples:
+                summary:
+                  value:
+                    total_products: 42
+                    products_out_of_stock: 3
+                    latest_entries:
+                      - id: 100
+                        product_id: 10
+                        quantity: 50
+                        created_at: "2026-03-05T09:00:00Z"
+                    latest_exits:
+                      - id: 200
+                        product_id: 11
+                        quantity: 5
+                        created_at: "2026-03-06T14:30:00Z"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Admin"
+        email:
+          type: string
+          format: email
+          example: "admin@example.com"
+        role:
+          type: string
+          enum: [admin, assistant]
+          example: "admin"
+      required:
+        - id
+        - name
+        - email
+        - role
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: "admin@example.com"
+        password:
+          type: string
+          format: password
+          example: "secret"
+      required:
+        - email
+        - password
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          example: "mocked.jwt.token"
+        user:
+          $ref: "#/components/schemas/User"
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Médicaments"
+        description:
+          type: string
+          example: "Antalgiques, antibiotiques"
+      required:
+        - id
+        - name
+
+    CategoryCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Consommables"
+        description:
+          type: string
+          example: "Gants, compresses"
+      required:
+        - name
+
+    # Product schema aligned to your DB table exactly
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 10
+        name:
+          type: string
+          example: "Paracétamol 500mg"
+        category_id:
+          type: integer
+          example: 1
+          description: "Foreign key vers categories.id"
+        description:
+          type: string
+          example: "Boîte de 16 comprimés - conserver à l'abri de la lumière"
+        quantity:
+          type: integer
+          example: 12
+        minimum_stock:
+          type: integer
+          example: 5
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-03-01T10:00:00Z"
+      required:
+        - id
+        - name
+        - category_id
+        - quantity
+        - minimum_stock
+
+    ProductCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Ibuprofène 200mg"
+        category_id:
+          type: integer
+          example: 1
+        description:
+          type: string
+          example: "Boîte de 20 comprimés"
+        quantity:
+          type: integer
+          example: 50
+        minimum_stock:
+          type: integer
+          example: 10
+      required:
+        - name
+        - category_id
+        - quantity
+        - minimum_stock
+
+    StockMovement:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 100
+        product_id:
+          type: integer
+          example: 10
+        type:
+          type: string
+          enum: [entry, exit]
+          example: entry
+        quantity:
+          type: integer
+          example: 50
+        note:
+          type: string
+          example: "Livraison pharmacie"
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-03-05T09:00:00Z"
+      required:
+        - id
+        - product_id
+        - type
+        - quantity
+        - created_at
+
+    StockEntryCreate:
+      type: object
+      properties:
+        product_id:
+          type: integer
+          example: 10
+        quantity:
+          type: integer
+          example: 50
+        note:
+          type: string
+          example: "Livraison pharmacie"
+      required:
+        - product_id
+        - quantity
+
+    StockExitCreate:
+      type: object
+      properties:
+        product_id:
+          type: integer
+          example: 11
+        quantity:
+          type: integer
+          example: 5
+        note:
+          type: string
+          example: "Consultation patient"
+      required:
+        - product_id
+        - quantity
+
+  responses:
+    NotFound:
+      description: Ressource non trouvée
+      content:
+        application/json:
+          examples:
+            notFound:
+              value:
+                code: 404
+                message: "Ressource introuvable"
+    ValidationError:
+      description: Erreur de validation
+      content:
+        application/json:
+          examples:
+            validation:
+              value:
+                errors:
+                  name:
+                    - "Le champ name est requis"
+    Unauthorized:
+      description: Non autorisé
+      content:
+        application/json:
+          examples:
+            unauthorized:
+              value:
+                code: 401
+                message: "Non autorisé"
+
+security: [] 
